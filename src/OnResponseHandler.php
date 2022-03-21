@@ -1,31 +1,26 @@
 <?php
 
-namespace VojtechDobes\NetteAjax;
+namespace Blueweb\NetteAjax;
 
-use Nette\Application\Responses\ForwardResponse;
 use Nette\Application\Responses\JsonResponse;
-use Nette\Application\IRouter;
-use Nette\Http;
+use Nette\Http\IRequest;
+use Nette\Http\Request;
+use Nette\Http\UrlScript;
 use Nette\Reflection\Property;
-
+use Nette\Routing\Router;
 
 /**
  * Automatically adds 'redirect' to payload when forward happens
  * to simplify userland code in presenters.
- *
  * Also bypasses 'redirect()' calls with 'forward()' calls.
- *
  * Sets 'Vary: X-Requested-With' header to disable payload caching.
- *
- * @author Vojtěch Dobeš
  */
 class OnResponseHandler
 {
-
-	/** @var Http\IRequest */
+	/** @var IRequest */
 	private $httpRequest;
 
-	/** @var IRouter */
+	/** @var Router */
 	private $router;
 
 	/** @var bool */
@@ -34,19 +29,15 @@ class OnResponseHandler
 	/** @var string */
 	private $fragment = '';
 
-
-
 	/**
-	 * @param  Http\IRequest
-	 * @param  IRouter
+	 * @param IRequest
+	 * @param Router
 	 */
-	public function __construct(Http\IRequest $httpRequest, IRouter $router)
+	public function __construct(IRequest $httpRequest, Router $router)
 	{
 		$this->httpRequest = $httpRequest;
 		$this->router = $router;
 	}
-
-
 
 	/**
 	 * Stores information about ocurring forward() call
@@ -56,8 +47,6 @@ class OnResponseHandler
 		$this->forwardHasHappened = TRUE;
 	}
 
-
-
 	public function __invoke($application, $response)
 	{
 		if ($response instanceof JsonResponse && ($payload = $response->getPayload()) instanceof \stdClass) {
@@ -65,9 +54,11 @@ class OnResponseHandler
 				if (($fragmentPos = strpos($payload->redirect, '#')) !== FALSE) {
 					$this->fragment = substr($payload->redirect, $fragmentPos);
 				}
-				$url = new Http\UrlScript($payload->redirect);
-				$url->setScriptPath($this->httpRequest->url->scriptPath);
-				$httpRequest = new Http\Request($url);
+				$url = new UrlScript(
+					$payload->redirect,
+					$this->httpRequest->url->scriptPath
+				);
+				$httpRequest = new Request($url);
 
 				if ($this->router->match($httpRequest) !== NULL) {
 					$prop = new Property('Nette\Application\Application', 'httpRequest');
@@ -78,10 +69,11 @@ class OnResponseHandler
 					exit;
 				}
 			} elseif ($this->forwardHasHappened && !isset($payload->redirect)) {
-				$payload->redirect = $application->getPresenter()->link('this', $application->getPresenter()->getParameters()) . $this->fragment;
+				$payload->redirect = $application->getPresenter()
+						->link('this', $application->getPresenter()
+							->getParameters()) . $this->fragment;
 				$this->fragment = '';
 			}
 		}
 	}
-
 }

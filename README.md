@@ -2,15 +2,19 @@
 
 Adds History API support to nette.ajax.js addon for Nette Framework!
 
+This repo is a fork of [vojtech-dobes/history.nette.ajax.js](https://github.com/vojtech-dobes/history.nette.ajax.js) package with additional support for Nette 3.
+
+All credits go to Vojtěch. Thank you!
+
 ## Installation
 
 1. Link `client-side/history.ajax.js` after `nette.ajax.js`.
-2. Load PHP files with Composer: `vojtech-dobes/nette-ajax-history`
+2. Load PHP files with Composer: `blueweb/nette-ajax-history`
 3. Register config extension in your configuration:
 
 ```
 extensions:
-	ajaxHistory: VojtechDobes\NetteAjax\HistoryExtension
+	ajaxHistory: Blueweb\NetteAjax\HistoryExtension
 ```
 
 ## Usage
@@ -29,12 +33,12 @@ if ($this->isAjax()) {
 And `app/@layout.latte` might be upgraded accordingly:
 
 ```html
-<title n:inner-snippet="title">...
+<title n:inner-snippet="title">...</title>
 ```
 
 ```html
 {snippet content}
-{include content}
+	{include content}
 {/snippet}
 ```
 
