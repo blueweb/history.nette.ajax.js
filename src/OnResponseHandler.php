@@ -23,7 +23,7 @@ class OnResponseHandler
 	private $router;
 
 	/** @var bool */
-	private $forwardHasHappened = FALSE;
+	private $forwardHasHappened = false;
 
 	/** @var string */
 	private $fragment = '';
@@ -43,14 +43,14 @@ class OnResponseHandler
 	 */
 	public function markForward()
 	{
-		$this->forwardHasHappened = TRUE;
+		$this->forwardHasHappened = true;
 	}
 
 	public function __invoke($application, $response)
 	{
 		if ($response instanceof JsonResponse && ($payload = $response->getPayload()) instanceof \stdClass) {
 			if (!$this->forwardHasHappened && isset($payload->redirect)) {
-				if (($fragmentPos = strpos($payload->redirect, '#')) !== FALSE) {
+				if (($fragmentPos = strpos($payload->redirect, '#')) !== false) {
 					$this->fragment = substr($payload->redirect, $fragmentPos);
 				}
 				$url = new UrlScript(
@@ -59,12 +59,12 @@ class OnResponseHandler
 				);
 				$httpRequest = new Request($url);
 
-				if ($this->router->match($httpRequest) !== NULL) {
+				if ($this->router->match($httpRequest) !== null) {
 					$prop = new \ReflectionProperty(
 						get_class($application),
 						'httpRequest'
 					);
-					$prop->setAccessible(TRUE);
+					$prop->setAccessible(true);
 					$prop->setValue($application, $httpRequest);
 
 					$application->run();
@@ -72,8 +72,10 @@ class OnResponseHandler
 				}
 			} elseif ($this->forwardHasHappened && !isset($payload->redirect)) {
 				$payload->redirect = $application->getPresenter()
-						->link('this', $application->getPresenter()
-							->getParameters()) . $this->fragment;
+						->link(
+							'this',
+							$application->getPresenter()->getParameters()
+						) . $this->fragment;
 				$this->fragment = '';
 			}
 		}
