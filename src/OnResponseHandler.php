@@ -2,6 +2,8 @@
 
 namespace Blueweb\NetteAjax;
 
+use Nette\Application\Application;
+use Nette\Application\IResponse;
 use Nette\Application\Responses\JsonResponse;
 use Nette\Http\IRequest;
 use Nette\Http\Request;
@@ -46,6 +48,13 @@ class OnResponseHandler
 		$this->forwardHasHappened = true;
 	}
 
+	/**
+	 * @param Application $application
+	 * @param IResponse $response
+	 *
+	 * @return void
+	 * @throws \ReflectionException
+	 */
 	public function __invoke($application, $response)
 	{
 		if ($response instanceof JsonResponse && ($payload = $response->getPayload()) instanceof \stdClass) {
@@ -57,14 +66,27 @@ class OnResponseHandler
 					$payload->redirect,
 					$this->httpRequest->url->scriptPath
 				);
-				$httpRequest = new Request($url);
+
+				$prop = new \ReflectionProperty(
+					get_class($application),
+					'httpRequest'
+				);
+				$prop->setAccessible(true);
+				/** @var IRequest $originalRequest */
+				$originalRequest = $prop->getValue($application);
+
+				$httpRequest = new Request(
+					$url,
+					null,
+					null,
+					null,
+					null,
+					null,
+					$originalRequest->getRemoteAddress(),
+					$originalRequest->getRemoteHost()
+				);
 
 				if ($this->router->match($httpRequest) !== null) {
-					$prop = new \ReflectionProperty(
-						get_class($application),
-						'httpRequest'
-					);
-					$prop->setAccessible(true);
 					$prop->setValue($application, $httpRequest);
 
 					$application->run();
