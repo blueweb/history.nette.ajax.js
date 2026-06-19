@@ -4,11 +4,14 @@ namespace Blueweb\NetteAjax;
 
 use Nette\Application\Application;
 use Nette\Application\IResponse;
+use Nette\Application\Request as AppRequest;
 use Nette\Application\Responses\JsonResponse;
+use Nette\Application\UI\Presenter;
 use Nette\Http\IRequest;
 use Nette\Http\Request;
 use Nette\Http\UrlScript;
 use Nette\Routing\Router;
+use Nette\Utils\Arrays;
 
 /**
  * Automatically adds 'redirect' to payload when forward happens
@@ -67,29 +70,43 @@ class OnResponseHandler
 					$this->httpRequest->url->scriptPath
 				);
 
-				$prop = new \ReflectionProperty(
-					get_class($application),
-					'httpRequest'
-				);
-				$prop->setAccessible(true);
-				/** @var IRequest $originalRequest */
-				$originalRequest = $prop->getValue($application);
-
 				$httpRequest = new Request(
 					$url,
-					null,
-					null,
-					null,
-					null,
-					null,
-					$originalRequest->getRemoteAddress(),
-					$originalRequest->getRemoteHost()
+					[],
+					[],
+					[],
+					[],
+					$this->httpRequest->getMethod(),
+					$this->httpRequest->getRemoteAddress(),
+					$this->httpRequest->getRemoteHost()
 				);
 
-				if ($this->router->match($httpRequest) !== null) {
-					$prop->setValue($application, $httpRequest);
+				// Application::$httpRequest je v novom Nette readonly, preto namiesto reflexie
+				// a opätovného run() zmatchujeme route ručne a spustíme cieľovú URL cez verejné processRequest().
+				$params = $this->router->match($httpRequest);
+				$presenter = $params[Presenter::PresenterKey] ?? null;
+				if ($params !== null && is_string($presenter)) {
+					unset($params[Presenter::PresenterKey]);
+					$appRequest = new AppRequest(
+						$presenter,
+						$httpRequest->getMethod(),
+						$params,
+						$httpRequest->getPost(),
+						$httpRequest->getFiles()
+					);
 
-					$application->run();
+					// Re-run obalíme rovnakým životným cyklom ako Application::run() (onStartup/onShutdown,
+					// resp. onError pri výnimke), aby sa správal konzistentne s bežným requestom aj keď
+					// neskôr pribudne logika na Application::onStartup. Pôvodne to zabezpečoval $application->run().
+					Arrays::invoke($application->onStartup, $application);
+					try {
+						$application->processRequest($appRequest);
+						Arrays::invoke($application->onShutdown, $application);
+					} catch (\Throwable $e) {
+						Arrays::invoke($application->onError, $application, $e);
+						Arrays::invoke($application->onShutdown, $application, $e);
+						throw $e;
+					}
 					exit;
 				}
 			} elseif ($this->forwardHasHappened && !isset($payload->redirect)) {
