@@ -93,13 +93,72 @@ class OnResponseHandler
 					exit;
 				}
 			} elseif ($this->forwardHasHappened && !isset($payload->redirect)) {
-				$payload->redirect = $application->getPresenter()
-						->link(
-							'this',
-							$application->getPresenter()->getParameters()
-						) . $this->fragment;
+				// Forward na chybovy presenter nema vlastnu URL, ktoru by malo zmysel ulozit do historie.
+				// Jeho parametre (exception, previousPresenter, request) su objekty a router by ich verejne
+				// vlastnosti rozbalil do query stringu, cim by klientovi vyzradil interny stav aplikacie.
+				if (!$this->isErrorForward($application)) {
+					$presenter = $application->getPresenter();
+					$payload->redirect = $presenter->link(
+						'this',
+						self::filterLinkParameters($presenter->getParameters())
+					) . $this->fragment;
+				}
 				$this->fragment = '';
 			}
 		}
+	}
+
+	/**
+	 * Detects forward to the error presenter made by Application::processException()
+	 *
+	 * @param Application $application
+	 *
+	 * @return bool
+	 */
+	private function isErrorForward($application): bool
+	{
+		$requests = $application->getRequests();
+		$request = end($requests);
+		if (!$request instanceof \Nette\Application\Request) {
+			return false;
+		}
+
+		if ($request->getParameter('exception') instanceof \Throwable) {
+			return true;
+		}
+
+		// error4xxPresenter existuje az od nette/application 3.2
+		$errorPresenters = [
+			$application->errorPresenter,
+			property_exists($application, 'error4xxPresenter') ? $application->error4xxPresenter : null,
+		];
+		$presenterName = $request->getPresenterName();
+		foreach ($errorPresenters as $errorPresenter) {
+			if ($errorPresenter !== null && strcasecmp($presenterName, $errorPresenter) === 0) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Keeps only scalar parameters (recursively in arrays), objects must never reach the URL
+	 *
+	 * @param array $params
+	 *
+	 * @return array
+	 */
+	private static function filterLinkParameters(array $params): array
+	{
+		foreach ($params as $key => $value) {
+			if (is_array($value)) {
+				$params[$key] = self::filterLinkParameters($value);
+			} elseif ($value !== null && !is_scalar($value)) {
+				unset($params[$key]);
+			}
+		}
+
+		return $params;
 	}
 }
