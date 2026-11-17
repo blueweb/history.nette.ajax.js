@@ -1,12 +1,12 @@
 <?php
 
-namespace VojtechDobes\NetteAjax;
+namespace Blueweb\NetteAjax;
 
-use Nette\Application\Responses\ForwardResponse;
+use Nette\Application\Application;
+use Nette\Application\Request as AppRequest;
 use Nette\Application\Responses\JsonResponse;
 use Nette\Application\IRouter;
 use Nette\Http;
-use Nette\Reflection\Property;
 
 
 /**
@@ -67,10 +67,20 @@ class OnResponseHandler
 				}
 				$url = new Http\UrlScript($payload->redirect);
 				$url->setScriptPath($this->httpRequest->url->scriptPath);
-				$httpRequest = new Http\Request($url);
+				$httpRequest = new Http\Request(
+					$url,
+					NULL,
+					NULL,
+					NULL,
+					NULL,
+					NULL,
+					$this->httpRequest->getMethod(),
+					$this->httpRequest->getRemoteAddress(),
+					$this->httpRequest->getRemoteHost()
+				);
 
 				if ($this->router->match($httpRequest) !== NULL) {
-					$prop = new Property('Nette\Application\Application', 'httpRequest');
+					$prop = new \ReflectionProperty('Nette\Application\Application', 'httpRequest');
 					$prop->setAccessible(TRUE);
 					$prop->setValue($application, $httpRequest);
 
@@ -78,10 +88,56 @@ class OnResponseHandler
 					exit;
 				}
 			} elseif ($this->forwardHasHappened && !isset($payload->redirect)) {
-				$payload->redirect = $application->getPresenter()->link('this', $application->getPresenter()->getParameters()) . $this->fragment;
+				// Error presenters have no URL to store; their parameters may expose exceptions or requests.
+				if (!$this->isErrorForward($application)) {
+					$presenter = $application->getPresenter();
+					$payload->redirect = $presenter->link('this', self::filterLinkParameters($presenter->getParameters())) . $this->fragment;
+				}
 				$this->fragment = '';
 			}
 		}
+	}
+
+
+
+	/**
+	 * @param  Application
+	 * @return bool
+	 */
+	private function isErrorForward(Application $application)
+	{
+		$requests = $application->getRequests();
+		$request = end($requests);
+		if (!$request instanceof AppRequest) {
+			return FALSE;
+		}
+
+		if (is_object($request->getParameter('exception'))) {
+			return TRUE;
+		}
+
+		return $application->errorPresenter !== NULL
+			&& strcasecmp($request->getPresenterName(), $application->errorPresenter) === 0;
+	}
+
+
+
+	/**
+	 * @param  array
+	 * @return array
+	 */
+	private static function filterLinkParameters(array $params)
+	{
+		foreach ($params as $key => $value) {
+			if (is_array($value)) {
+				$params[$key] = self::filterLinkParameters($value);
+			} elseif ($value !== NULL && !is_scalar($value)) {
+				// Presenter::link() restores omitted action arguments from the current request.
+				$params[$key] = NULL;
+			}
+		}
+
+		return $params;
 	}
 
 }

@@ -1,19 +1,25 @@
 {
-	"name": "vojtech-dobes/nette-ajax-history",
+	"name": "blueweb/nette-ajax-history",
 	"type": "library",
-	"description": "Adds History API support for Nette Framework.",
+	"description": "Adds History API support for Nette Framework 2.4.",
 	"keywords": ["nette", "nette.ajax.js", "ajax"],
-	"homepage": "https://github.com/vojtech-dobes/history.nette.ajax.js",
+	"homepage": "https://github.com/blueweb/history.nette.ajax.js",
 	"license": "MIT",
 	"authors": [
 		{
 			"name": "Vojtěch Dobeš",
 			"email": "me@vojtechdobes.com"
+		},
+		{
+			"name": "Milan Sedlák",
+			"email": "milan@blueweb.sk"
 		}
 	],
 	"require": {
 		"php": ">=5.3.1",
-		"nette/nette": "~2.0"
+		"nette/application": "~2.0",
+		"nette/di": "~2.0",
+		"nette/http": "~2.0"
 	},
 	"autoload": {
 		"classmap": ["src/"]
