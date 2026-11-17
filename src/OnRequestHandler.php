@@ -1,6 +1,6 @@
 <?php
 
-namespace VojtechDobes\NetteAjax;
+namespace Blueweb\NetteAjax;
 
 use Nette\Http;
 

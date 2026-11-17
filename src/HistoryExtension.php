@@ -1,6 +1,6 @@
 <?php
 
-namespace VojtechDobes\NetteAjax;
+namespace Blueweb\NetteAjax;
 
 use Nette\DI;
 
@@ -20,10 +20,10 @@ class HistoryExtension extends DI\CompilerExtension
 		$container = $this->getContainerBuilder();
 
 		$container->addDefinition($this->prefix('onRequestHandler'))
-			->setClass('VojtechDobes\NetteAjax\OnRequestHandler');
+			->setClass('Blueweb\NetteAjax\OnRequestHandler');
 
 		$container->addDefinition($this->prefix('onResponseHandler'))
-			->setClass('VojtechDobes\NetteAjax\OnResponseHandler');
+			->setClass('Blueweb\NetteAjax\OnResponseHandler');
 
 		$application = $container->getDefinition('application');
 		$application->addSetup('$service->onRequest[] = ?', array('@' . $this->prefix('onRequestHandler')));
